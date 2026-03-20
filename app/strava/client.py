@@ -1,7 +1,16 @@
 import time
 import requests
+import certifi
 from flask import current_app
 from ..models import db, StravaToken
+
+
+def _session():
+    """Session com certificados SSL corretos (fix Python 3.14 no Render)."""
+    s = requests.Session()
+    s.verify = certifi.where()
+    return s
+
 
 class StravaClient:
     """Wrapper da Strava API com renovação automática de tokens."""
@@ -13,20 +22,17 @@ class StravaClient:
         self.token = user.strava_token
 
     def _ensure_token(self):
-        """Renova o access_token se expirado."""
         if not self.token or not self.token.refresh_token:
             raise ValueError("Usuário não conectou o Strava.")
-
         if self.token.is_expired():
-            resp = requests.post('https://www.strava.com/oauth/token', data={
+            resp = _session().post('https://www.strava.com/oauth/token', data={
                 'client_id':     current_app.config['STRAVA_CLIENT_ID'],
                 'client_secret': current_app.config['STRAVA_CLIENT_SECRET'],
                 'grant_type':    'refresh_token',
                 'refresh_token': self.token.refresh_token,
-            }, timeout=10)
+            }, timeout=15)
             resp.raise_for_status()
             data = resp.json()
-
             self.token.access_token  = data['access_token']
             self.token.refresh_token = data['refresh_token']
             self.token.expires_at    = data['expires_at']
@@ -34,16 +40,14 @@ class StravaClient:
 
     def _get(self, endpoint, params=None):
         self._ensure_token()
-        url = f"{self.BASE}{endpoint}"
-        resp = requests.get(url, headers={
+        url  = f"{self.BASE}{endpoint}"
+        resp = _session().get(url, headers={
             'Authorization': f"Bearer {self.token.access_token}"
-        }, params=params or {}, timeout=15)
-
+        }, params=params or {}, timeout=20)
         if resp.status_code == 429:
-            raise RuntimeError("Rate limit do Strava atingido. Tente novamente em 15 minutos.")
+            raise RuntimeError("Rate limit do Strava. Tente em 15 minutos.")
         if resp.status_code == 401:
             raise ValueError("Token inválido. Reconecte o Strava.")
-
         resp.raise_for_status()
         return resp.json()
 
@@ -70,38 +74,63 @@ class StravaClient:
     def get_activity_streams(self, activity_id):
         keys = 'time,distance,altitude,heartrate,cadence,velocity_smooth,latlng,moving'
         return self._get(f'/activities/{activity_id}/streams', {
-            'keys': keys,
-            'key_by_type': 'true',
-            'resolution': 'medium',
+            'keys': keys, 'key_by_type': 'true', 'resolution': 'medium',
         })
 
     def get_activity_laps(self, activity_id):
         return self._get(f'/activities/{activity_id}/laps')
 
-    # ── Sync completo ──
-    def sync_all_activities(self, max_pages=10):
-        """Sincroniza todas as atividades do tipo corrida."""
+    # ── Sync RAPIDO — sem streams, para o callback OAuth (evita timeout) ──
+    def sync_all_activities_fast(self, max_pages=5):
         from .sync import save_activity
         synced = 0
         for page in range(1, max_pages + 1):
-            acts = self.get_activities(page=page, per_page=50)
+            try:
+                acts = self.get_activities(page=page, per_page=50)
+            except Exception:
+                break
             if not acts:
                 break
             for a in acts:
                 if a.get('sport_type') in ('Run', 'TrailRun', 'Walk', 'Hike'):
-                    saved = save_activity(self.user, a, self)
-                    if saved:
+                    if save_activity(self.user, a, client=None):
                         synced += 1
         return synced
 
-    def sync_new_activities(self, after_timestamp):
-        """Sincroniza apenas atividades novas (para webhook)."""
+    # ── Sync completo com streams ──
+    def sync_all_activities(self, max_pages=10):
         from .sync import save_activity
-        acts = self.get_activities(after=after_timestamp, per_page=30)
+        synced = 0
+        for page in range(1, max_pages + 1):
+            try:
+                acts = self.get_activities(page=page, per_page=50)
+            except Exception:
+                break
+            if not acts:
+                break
+            for a in acts:
+                if a.get('sport_type') in ('Run', 'TrailRun', 'Walk', 'Hike'):
+                    if save_activity(self.user, a, self):
+                        synced += 1
+        return synced
+
+    # ── Webhook ──
+    def sync_new_activities(self, after_timestamp):
+        from .sync import save_activity
+        try:
+            acts = self.get_activities(after=after_timestamp, per_page=30)
+        except Exception:
+            return 0
         synced = 0
         for a in acts:
             if a.get('sport_type') in ('Run', 'TrailRun', 'Walk', 'Hike'):
-                saved = save_activity(self.user, a, self)
-                if saved:
+                if save_activity(self.user, a, client=None):
                     synced += 1
         return synced
+
+    # ── Streams sob demanda ──
+    def fetch_streams_for_activity(self, activity_id):
+        try:
+            return self.get_activity_streams(activity_id)
+        except Exception:
+            return None
