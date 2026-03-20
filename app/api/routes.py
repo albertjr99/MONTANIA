@@ -2,6 +2,13 @@ from flask import Blueprint, jsonify, request, abort
 from flask_login import login_required, current_user
 from sqlalchemy import func, extract
 from datetime import datetime, timedelta, timezone
+import pytz
+
+TZ_BRASILIA = pytz.timezone('America/Sao_Paulo')
+
+def now_br():
+    """Retorna datetime atual no fuso de Brasília."""
+    return datetime.now(TZ_BRASILIA).replace(tzinfo=None)
 from ..models import db, Activity, User
 
 api_bp = Blueprint('api', __name__)
@@ -14,7 +21,7 @@ def _get_target_user(user_id=None):
     return current_user
 
 def _period_filter(query, user_id, period):
-    now = datetime.now()
+    now = now_br()
     if period == 'week':
         start = now - timedelta(days=7)
     elif period == 'month':
@@ -79,7 +86,7 @@ def volume_weekly():
     user    = _get_target_user(user_id)
 
     weeks_back = 12
-    now   = datetime.now()
+    now   = now_br()
     start = now - timedelta(weeks=weeks_back)
 
     acts = Activity.query.filter(
@@ -137,7 +144,7 @@ def fatigue():
     user_id = request.args.get('user_id', type=int)
     user    = _get_target_user(user_id)
 
-    start = datetime.now() - timedelta(days=28)
+    start = now_br() - timedelta(days=28)
     acts  = Activity.query.filter(
         Activity.user_id == user.id,
         Activity.start_date_local >= start
@@ -152,7 +159,7 @@ def fatigue():
 
     labels, data, colors = [], [], []
     for i in range(28):
-        d = datetime.now() - timedelta(days=27-i)
+        d = now_br() - timedelta(days=27-i)
         key = d.strftime('%d/%m')
         val = day_map.get(key, 0)
         labels.append(key)
@@ -204,7 +211,7 @@ def group_stats():
         abort(403)
 
     period = request.args.get('period', 'week')
-    now    = datetime.now()
+    now    = now_br()
     start  = now - timedelta(days=7 if period == 'week' else 30)
 
     athletes = User.query.filter_by(role='athlete', active=True).all()
