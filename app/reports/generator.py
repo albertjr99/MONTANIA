@@ -305,10 +305,10 @@ def generate_report(athletes_data, group_stats, volume_data,
     filters:       dict com period, sport_type, athlete_name, date_range
     logo_b64:      string base64 do logo
     """
-    buf  = io.BytesIO()
-    doc  = SimpleDocTemplate(buf, pagesize=A4,
-                              leftMargin=30, rightMargin=30,
-                              topMargin=48, bottomMargin=40)
+    buf = io.BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=A4,
+                             leftMargin=30, rightMargin=30,
+                             topMargin=48, bottomMargin=40)
 
     s     = _styles()
     story = []
@@ -416,8 +416,7 @@ def generate_report(athletes_data, group_stats, volume_data,
 
         canvas.restoreState()
 
-    # Página de capa em branco com desenho customizado
-    story.append(Spacer(1, H - 60))  # será sobrescrita pelo onFirstPage
+    # Capa vazia — será desenhada pelo onFirstPage
     story.append(PageBreak())
 
     # ══════════════════════════════════════
@@ -600,6 +599,8 @@ def generate_report(athletes_data, group_stats, volume_data,
         s['footer']))
 
     # Build com capa customizada
+    # onFirstPage = capa escura sem cabeçalho/rodapé
+    # onLaterPages = páginas com cabeçalho/rodapé padrão
     doc.build(
         story,
         onFirstPage=draw_cover,
