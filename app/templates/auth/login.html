@@ -104,6 +104,46 @@ body{font-family:'Outfit',system-ui,sans-serif;min-height:100vh;display:flex;ove
 .form-title{font-family:'Playfair Display',serif;font-size:30px;font-weight:700;color:#1A0E2E;letter-spacing:-.01em;margin-bottom:6px}
 .form-sub{font-size:13px;color:#8B7BA8;margin-bottom:28px;font-weight:400;line-height:1.5}
 
+
+/* Logo animada no formulário */
+.form-logo-stage{
+  width:52px;height:52px;
+  position:relative;
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;
+}
+.fl-pulse{
+  position:absolute;inset:-5px;border-radius:50%;
+  border:1.5px solid rgba(109,40,217,.35);
+  animation:flPulse 2.5s ease-in-out infinite;
+}
+.fl-pulse-2{
+  inset:-12px;
+  border-color:rgba(109,40,217,.15);
+  animation-delay:.7s;
+}
+@keyframes flPulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.1);opacity:.4}}
+.fl-ring{
+  position:absolute;inset:-2px;border-radius:50%;
+  background:conic-gradient(from 0deg,transparent 0%,rgba(109,40,217,.85) 18%,rgba(168,85,247,.6) 32%,transparent 48%);
+  animation:flSpin 5s linear infinite;
+  mask:radial-gradient(circle at center,transparent 50%,black 53%);
+  -webkit-mask:radial-gradient(circle at center,transparent 50%,black 53%);
+}
+@keyframes flSpin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+.fl-glass{
+  position:absolute;inset:0;border-radius:50%;
+  background:linear-gradient(135deg,#5B21B6,#A855F7);
+  display:grid;place-items:center;
+  box-shadow:0 0 18px rgba(109,40,217,.5),0 0 36px rgba(109,40,217,.2),inset 0 1px 0 rgba(255,255,255,.2);
+}
+.fl-img{
+  width:24px;height:14px;
+  object-fit:contain;
+  filter:brightness(0) invert(1) drop-shadow(0 1px 5px rgba(255,255,255,.5));
+  position:relative;z-index:1;
+}
+
 /* Flash */
 .flashes{display:flex;flex-direction:column;gap:8px;margin-bottom:20px}
 .flash{padding:11px 15px;border-radius:10px;font-size:12.5px;display:flex;align-items:center;gap:9px;font-weight:500}
