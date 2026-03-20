@@ -2,7 +2,7 @@
 
 {% block title %}{{ activity.name }}{% endblock %}
 {% block page_title %}{{ activity.name }}{% endblock %}
-{% block page_sub %}{{ activity.start_date_local.strftime('%d/%m/%Y às %H:%M') if activity.start_date_local else '' }} · {{ activity.sport_type }}{% endblock %}
+{% block page_sub %}{{ activity.start_date_local | dtbr if activity.start_date_local else '' }} · {{ activity.sport_type }}{% endblock %}
 
 {% block content %}
 <div class="content">
