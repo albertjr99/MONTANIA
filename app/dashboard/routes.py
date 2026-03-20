@@ -62,3 +62,12 @@ def activities():
 @login_required
 def progress():
     return render_template('dashboard/progress.html')
+
+@dashboard_bp.route('/report')
+@login_required
+def report():
+    from ..auth.routes import require_role
+    if not current_user.is_manager:
+        from flask import abort
+        abort(403)
+    return render_template('dashboard/report.html')
