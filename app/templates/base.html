@@ -9,6 +9,46 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 {% block extra_css %}{% endblock %}
+
+<style>
+/* Logo animada na sidebar */
+.sb-logo-wrap{
+  width:44px;height:44px;
+  position:relative;
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;
+}
+.sb-logo-pulse{
+  position:absolute;inset:-5px;border-radius:50%;
+  border:1px solid rgba(168,85,247,.35);
+  animation:sbPulse 2.5s ease-in-out infinite;
+}
+.sb-logo-pulse::after{
+  content:'';position:absolute;inset:-8px;border-radius:50%;
+  border:1px solid rgba(168,85,247,.15);
+  animation:sbPulse 2.5s ease-in-out infinite .6s;
+}
+@keyframes sbPulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.1);opacity:.5}}
+.sb-logo-ring{
+  position:absolute;inset:-2px;border-radius:50%;
+  background:conic-gradient(from 0deg,transparent 0%,rgba(168,85,247,.85) 18%,rgba(236,72,153,.6) 32%,transparent 48%);
+  animation:sbSpin 5s linear infinite;
+  mask:radial-gradient(circle at center,transparent 52%,black 55%);
+  -webkit-mask:radial-gradient(circle at center,transparent 52%,black 55%);
+}
+@keyframes sbSpin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+.sb-logo-glass{
+  position:absolute;inset:0;border-radius:50%;
+  background:linear-gradient(135deg,#5B21B6,#A855F7);
+  display:grid;place-items:center;
+  box-shadow:0 0 16px rgba(139,77,184,.5),0 0 32px rgba(139,77,184,.2),inset 0 1px 0 rgba(255,255,255,.2);
+}
+.sb-logo-img{
+  width:22px;height:13px;
+  object-fit:contain;
+  filter:brightness(0) invert(1) drop-shadow(0 1px 6px rgba(255,255,255,.5));
+}
+</style>
 </head>
 <body>
 
@@ -24,14 +64,13 @@
 <!-- ── SIDEBAR ── -->
 <aside class="sidebar" id="sidebar">
   <div class="sidebar-logo">
-    <div class="logo-mark" style="
-      background:linear-gradient(135deg,#6D28D9,#A855F7);
-      box-shadow:0 4px 16px rgba(109,40,217,0.35),inset 0 1px 0 rgba(255,255,255,0.25);
-    ">
-      <img src="{{ LOGO_B64 }}" alt="Montania" style="
-        width:26px;height:26px;object-fit:contain;
-        filter:drop-shadow(0 2px 6px rgba(255,255,255,0.3));
-      ">
+    <!-- Logo animada igual ao login -->
+    <div class="sb-logo-wrap">
+      <div class="sb-logo-pulse"></div>
+      <div class="sb-logo-ring"></div>
+      <div class="sb-logo-glass">
+        <img src="{{ LOGO_B64 }}" alt="Montania" class="sb-logo-img">
+      </div>
     </div>
     <div>
       <div class="logo-wordmark">MONTANIA</div>
