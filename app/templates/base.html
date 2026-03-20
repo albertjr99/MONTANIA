@@ -12,8 +12,11 @@
 </head>
 <body>
 
+<!-- Overlay sidebar mobile -->
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
 <!-- Mobile toggle -->
-<button class="mobile-toggle" onclick="document.getElementById('sidebar').classList.toggle('open')" aria-label="Menu">
+<button class="mobile-toggle" onclick="toggleSidebar()" aria-label="Menu">
   <svg viewBox="0 0 24 24" fill="none"><line x1="3" y1="6" x2="21" y2="6" stroke-width="2" stroke-linecap="round"/><line x1="3" y1="12" x2="21" y2="12" stroke-width="2" stroke-linecap="round"/><line x1="3" y1="18" x2="21" y2="18" stroke-width="2" stroke-linecap="round"/></svg>
 </button>
 
@@ -166,6 +169,23 @@
 </main>
 
 <script>
+function toggleSidebar() {
+  const s = document.getElementById('sidebar');
+  const o = document.getElementById('sidebarOverlay');
+  s.classList.toggle('open');
+  o.classList.toggle('visible');
+  document.body.style.overflow = s.classList.contains('open') ? 'hidden' : '';
+}
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebarOverlay').classList.remove('visible');
+  document.body.style.overflow = '';
+}
+// Fechar sidebar ao navegar (mobile)
+document.addEventListener('click', e => {
+  if (e.target.closest('.nav-item')) closeSidebar();
+});
+
 // Chart.js defaults — paleta Montania
 Chart.defaults.color = '#8B7BA8';
 Chart.defaults.font.family = "'Outfit', system-ui, sans-serif";
@@ -188,5 +208,47 @@ function gradFill(ctx, c1='rgba(139,77,184,.18)', c2='rgba(139,77,184,0)') {
 }
 </script>
 {% block scripts %}{% endblock %}
+
+{% if current_user.is_authenticated %}
+<!-- ── BOTTOM NAVIGATION (mobile/tablet) ── -->
+<nav class="bottom-nav">
+  <a class="bn-item {% if request.endpoint == 'dashboard.home' %}active{% endif %}"
+     href="{{ url_for('dashboard.home') }}">
+    <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+    <span class="bn-label">Início</span>
+  </a>
+  <a class="bn-item {% if request.endpoint == 'dashboard.activities' %}active{% endif %}"
+     href="{{ url_for('dashboard.activities') }}">
+    <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+    <span class="bn-label">Atividades</span>
+  </a>
+  {% if current_user.strava_connected %}
+  <a class="bn-item" href="{{ url_for('strava.sync') }}">
+    <div class="bn-center">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2.2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
+    </div>
+    <span class="bn-label" style="margin-top:6px">Sync</span>
+  </a>
+  {% else %}
+  <a class="bn-item" href="{{ url_for('strava.connect') }}">
+    <div class="bn-center">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2.2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+    </div>
+    <span class="bn-label" style="margin-top:6px">Strava</span>
+  </a>
+  {% endif %}
+  <a class="bn-item {% if request.endpoint == 'dashboard.progress' %}active{% endif %}"
+     href="{{ url_for('dashboard.progress') }}">
+    <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+    <span class="bn-label">Progresso</span>
+  </a>
+  <a class="bn-item {% if request.endpoint == 'dashboard.settings' %}active{% endif %}"
+     href="{{ url_for('dashboard.settings') }}">
+    <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+    <span class="bn-label">Perfil</span>
+  </a>
+</nav>
+{% endif %}
+
 </body>
 </html>
