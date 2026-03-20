@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+{% block title %}Gerenciar Atletas{% endblock %}
+{% block page_title %}Gerenciar Atletas{% endblock %}
+{% block page_sub %}{{ athletes|length }} atleta(s) · {{ managers|length }} gestor(es){% endblock %}
+
+{% block topbar_extra %}
+<a href="{{ url_for('auth.register') }}" class="btn btn-primary btn-sm">+ Novo Usuário</a>
+{% endblock %}
+
+{% block content %}
+<div class="content">
+
+  {# Atletas #}
+  <div class="card" style="margin-bottom:16px">
+    <div class="section-hd" style="margin-bottom:16px">
+      <div class="section-title">🏃‍♀️ Atletas ({{ athletes|length }})</div>
+    </div>
+    {% if athletes %}
+    {% for u in athletes %}
+    <div class="act-row" style="border-bottom:1px solid rgba(139,92,246,.07)">
+      <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--primary-dark),var(--primary));display:grid;place-items:center;font-family:var(--font-d);font-size:13px;font-weight:700;flex-shrink:0">
+        {{ u.name[:2].upper() }}
+      </div>
+      <div style="flex:1;min-width:0">
+        <div class="act-name">{{ u.name }}</div>
+        <div class="act-date">
+          {{ u.email }} ·
+          {% if u.strava_connected %}<span style="color:var(--success)">Strava ✓</span>
+          {% else %}<span style="color:var(--danger)">Strava não conectado</span>{% endif %}
+          {% if not u.active %} · <span style="color:var(--danger)">Desativado</span>{% endif %}
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <span class="tag {% if u.active %}tag-green{% else %}tag-red{% endif %}">
+          {{ 'Ativo' if u.active else 'Inativo' }}
+        </span>
+        <a href="{{ url_for('dashboard.athlete', user_id=u.id) }}" class="btn btn-ghost btn-sm">📊 Ver</a>
+        <form method="POST" action="{{ url_for('admin.toggle_user', user_id=u.id) }}" style="display:inline">
+          <button type="submit" class="btn btn-ghost btn-sm">
+            {{ '⏸ Desativar' if u.active else '▶ Ativar' }}
+          </button>
+        </form>
+        <form method="POST" action="{{ url_for('admin.delete_user', user_id=u.id) }}" style="display:inline"
+              onsubmit="return confirm('Remover {{ u.name }}? Esta ação é irreversível.')">
+          <button type="submit" class="btn btn-danger btn-sm">🗑</button>
+        </form>
+      </div>
+    </div>
+    {% endfor %}
+    {% else %}
+    <p style="color:var(--text-muted);font-size:13px;padding:16px 0">Nenhuma atleta cadastrada ainda. <a href="{{ url_for('auth.register') }}" style="color:var(--primary-light)">Adicionar →</a></p>
+    {% endif %}
+  </div>
+
+  {# Gestores #}
+  <div class="card">
+    <div class="section-hd" style="margin-bottom:16px">
+      <div class="section-title">👥 Gestores ({{ managers|length }})</div>
+    </div>
+    {% for u in managers %}
+    <div class="act-row" style="border-bottom:1px solid rgba(139,92,246,.07)">
+      <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#6D28D9,#A78BFA);display:grid;place-items:center;font-family:var(--font-d);font-size:13px;font-weight:700;flex-shrink:0">
+        {{ u.name[:2].upper() }}
+      </div>
+      <div style="flex:1;min-width:0">
+        <div class="act-name">{{ u.name }}</div>
+        <div class="act-date">{{ u.email }} · Gestor</div>
+      </div>
+      <form method="POST" action="{{ url_for('admin.delete_user', user_id=u.id) }}" style="display:inline"
+            onsubmit="return confirm('Remover {{ u.name }}?')">
+        <button type="submit" class="btn btn-danger btn-sm">🗑</button>
+      </form>
+    </div>
+    {% else %}
+    <p style="color:var(--text-muted);font-size:13px;padding:16px 0">Nenhum gestor cadastrado. <a href="{{ url_for('auth.register') }}" style="color:var(--primary-light)">Adicionar →</a></p>
+    {% endfor %}
+  </div>
+
+</div>
+{% endblock %}

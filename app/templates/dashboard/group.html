@@ -1,0 +1,135 @@
+{% extends 'base.html' %}
+{% block title %}Equipe{% endblock %}
+{% block page_title %}Visão da Equipe{% endblock %}
+{% block page_sub %}Resumo do grupo · MONTANIA{% endblock %}
+
+{% block topbar_extra %}
+<select class="select" id="periodSelect" onchange="loadGroup()">
+  <option value="week" selected>Esta semana</option>
+  <option value="month">Este mês</option>
+</select>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.ath-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;display:flex;flex-direction:column;gap:10px;cursor:pointer;transition:all .2s;animation:fadeUp .4s ease both}
+.ath-card:hover{border-color:rgba(139,92,246,.4);transform:translateY(-2px);box-shadow:0 8px 30px rgba(139,92,246,.1)}
+.ath-card-hd{display:flex;align-items:center;gap:10px}
+.mini-av{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;font-family:var(--font-d);font-size:14px;font-weight:700;flex-shrink:0;border:2px solid var(--border)}
+.mini-name{font-size:13px;font-weight:600}
+.mini-sub{font-size:10.5px;color:var(--text-muted);margin-top:1px}
+.mini-stats{display:flex;justify-content:space-between}
+.mini-val{font-family:var(--font-d);font-size:16px;font-weight:700}
+.mini-key{font-size:9.5px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;margin-top:1px}
+.prog-bar{height:3px;background:var(--surface-3);border-radius:2px;overflow:hidden}
+.prog-fill{height:100%;border-radius:2px;background:linear-gradient(90deg,var(--primary-dark),var(--primary-light));transition:width 1s ease}
+.rank-badge{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:700;font-family:var(--font-d);flex-shrink:0}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="content">
+
+  {# Ranking chart + volume #}
+  <div class="grid-2" style="margin-bottom:20px">
+    <div class="card">
+      <div class="chart-header"><div><div class="card-title">Ranking Semanal</div><div class="card-sub">Km por atleta</div></div></div>
+      <canvas id="chartRanking" height="220"></canvas>
+    </div>
+    <div class="card">
+      <div class="chart-header"><div><div class="card-title">Presença no Período</div><div class="card-sub">Quem treinou</div></div></div>
+      <canvas id="chartPresence" height="220"></canvas>
+    </div>
+  </div>
+
+  {# Athletes grid #}
+  <div style="font-family:var(--font-d);font-size:14px;font-weight:600;margin-bottom:14px">Atletas do Grupo</div>
+  <div class="grid-3" id="athletesGrid">
+    <div style="color:var(--text-faint);font-size:12px;padding:20px;grid-column:span 3;text-align:center">Carregando...</div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const COLORS = ['#8B5CF6','#EC4899','#06B6D4','#F59E0B','#10B981','#F97316','#A78BFA','#34D399','#FB7185','#60A5FA'];
+let charts = {};
+
+async function loadGroup() {
+  const period = document.getElementById('periodSelect').value;
+  try {
+    const r = await fetch(`/api/group/stats?period=${period}`);
+    const d = await r.json();
+    renderCards(d.athletes);
+    renderRanking(d.athletes);
+    renderPresence(d.athletes);
+  } catch(e) { console.error(e); }
+}
+
+function renderCards(athletes) {
+  const maxKm = Math.max(...athletes.map(a => a.km), 1);
+  document.getElementById('athletesGrid').innerHTML = athletes.map((a, i) => `
+    <div class="ath-card" onclick="window.location='/dashboard/athlete/${a.id}'" style="animation-delay:${i*0.05}s">
+      <div class="ath-card-hd">
+        <div class="mini-av" style="background:linear-gradient(135deg,${COLORS[i%COLORS.length]}88,${COLORS[i%COLORS.length]})">
+          ${a.initials}
+        </div>
+        <div style="flex:1">
+          <div class="mini-name">${a.name}</div>
+          <div class="mini-sub">${a.connected ? '🟢 Strava ok' : '🔴 Sem Strava'} · ${a.runs} corrida${a.runs !== 1 ? 's' : ''}</div>
+        </div>
+        <div class="rank-badge" style="background:${i<3?'rgba(251,191,36,.15)':'var(--surface-3)'};color:${i<3?'var(--warning)':'var(--text-muted)'}">
+          ${i+1}º
+        </div>
+      </div>
+      <div class="mini-stats">
+        <div><div class="mini-val">${a.km}</div><div class="mini-key">km</div></div>
+        <div style="text-align:right"><div class="mini-val" style="color:${COLORS[i%COLORS.length]}">${Math.round(a.km/maxKm*100)}%</div><div class="mini-key">da líder</div></div>
+        <div style="text-align:right"><div class="mini-val">${a.avg_pace}</div><div class="mini-key">pace médio</div></div>
+      </div>
+      <div class="prog-bar"><div class="prog-fill" style="width:${a.km/maxKm*100}%;background:linear-gradient(90deg,${COLORS[i%COLORS.length]}88,${COLORS[i%COLORS.length]})"></div></div>
+    </div>
+  `).join('');
+}
+
+function renderRanking(athletes) {
+  if (charts.ranking) charts.ranking.destroy();
+  charts.ranking = new Chart(document.getElementById('chartRanking'), {
+    type: 'bar',
+    data: {
+      labels: athletes.map(a => a.name.split(' ')[0]),
+      datasets: [{ data: athletes.map(a => a.km),
+        backgroundColor: athletes.map((_,i) => COLORS[i%COLORS.length]+'AA'),
+        borderRadius: 6, borderSkipped: false }]
+    },
+    options: { ...GRID_OPT, indexAxis:'y',
+      scales: { ...GRID_OPT.scales,
+        x: { ...GRID_OPT.scales.x, ticks: { callback: v => v+'km', color:'#6B6485' } },
+        y: { ...GRID_OPT.scales.y, ticks: { color:'#9B8BB0' } }
+      }
+    }
+  });
+}
+
+function renderPresence(athletes) {
+  if (charts.presence) charts.presence.destroy();
+  charts.presence = new Chart(document.getElementById('chartPresence'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Treinaram', 'Sem atividade'],
+      datasets: [{
+        data: [athletes.filter(a=>a.runs>0).length, athletes.filter(a=>a.runs===0).length],
+        backgroundColor: ['rgba(139,92,246,.8)','rgba(74,67,104,.4)'],
+        borderWidth: 0, hoverOffset: 6,
+      }]
+    },
+    options: { responsive:true, maintainAspectRatio:true, cutout:'68%',
+      plugins: { legend: { display:true, position:'bottom', labels:{ color:'#8B82A8', font:{size:11}, padding:14, boxWidth:12 } } }
+    }
+  });
+}
+
+document.addEventListener('DOMContentLoaded', loadGroup);
+</script>
+{% endblock %}

@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+{% block title %}Configurações{% endblock %}
+{% block page_title %}Configurações{% endblock %}
+{% block page_sub %}Conta e integrações{% endblock %}
+
+{% block content %}
+<div class="content">
+<div style="max-width:600px;display:flex;flex-direction:column;gap:16px">
+
+  {# Perfil #}
+  <div class="card">
+    <div class="card-title" style="margin-bottom:16px">👤 Minha Conta</div>
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px">
+      <div style="width:54px;height:54px;border-radius:50%;background:linear-gradient(135deg,var(--primary-dark),var(--primary-light));display:grid;place-items:center;font-family:var(--font-d);font-size:20px;font-weight:700;border:2px solid var(--border)">
+        {{ current_user.name[:2].upper() }}
+      </div>
+      <div>
+        <div style="font-size:15px;font-weight:600">{{ current_user.name }}</div>
+        <div style="font-size:12px;color:var(--text-muted)">{{ current_user.email }} · {{ current_user.role|capitalize }}</div>
+      </div>
+    </div>
+  </div>
+
+  {# Strava #}
+  <div class="card">
+    <div class="card-title" style="margin-bottom:14px">🔗 Integração Strava</div>
+    {% if current_user.strava_connected %}
+      <div class="strava-pill" style="width:fit-content;margin-bottom:14px">
+        <span class="dot"></span> Strava conectado
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <a href="{{ url_for('strava.sync') }}" class="btn btn-ghost btn-sm">🔄 Sincronizar agora</a>
+        <form method="POST" action="{{ url_for('strava.disconnect') }}" onsubmit="return confirm('Desconectar o Strava? As atividades salvas serão mantidas.')">
+          <button type="submit" class="btn btn-danger btn-sm">✂️ Desconectar</button>
+        </form>
+      </div>
+    {% else %}
+      <p style="font-size:13px;color:var(--text-muted);margin-bottom:14px">Conecte sua conta Strava para sincronizar automaticamente suas corridas.</p>
+      <a href="{{ url_for('strava.connect') }}" class="btn btn-strava">🔗 Conectar com Strava</a>
+    {% endif %}
+  </div>
+
+  {# Trocar senha #}
+  <div class="card">
+    <div class="card-title" style="margin-bottom:16px">🔒 Alterar Senha</div>
+    <form method="POST" action="{{ url_for('auth.change_password') }}">
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div>
+          <label style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;display:block;margin-bottom:6px">Senha atual</label>
+          <input type="password" name="current_password" required style="width:100%;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 13px;color:var(--text);font-size:13px;font-family:var(--font-b);outline:none">
+        </div>
+        <div>
+          <label style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;display:block;margin-bottom:6px">Nova senha</label>
+          <input type="password" name="new_password" required style="width:100%;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 13px;color:var(--text);font-size:13px;font-family:var(--font-b);outline:none">
+        </div>
+        <div>
+          <label style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;display:block;margin-bottom:6px">Confirmar nova senha</label>
+          <input type="password" name="confirm_password" required style="width:100%;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 13px;color:var(--text);font-size:13px;font-family:var(--font-b);outline:none">
+        </div>
+        <button type="submit" class="btn btn-primary" style="width:fit-content">Salvar nova senha</button>
+      </div>
+    </form>
+  </div>
+
+  {# Logout #}
+  <div class="card">
+    <div class="card-title" style="margin-bottom:12px">🚪 Sair</div>
+    <a href="{{ url_for('auth.logout') }}" class="btn btn-ghost btn-sm">Fazer logout</a>
+  </div>
+
+</div>
+</div>
+{% endblock %}

@@ -1,0 +1,184 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ activity.name }}{% endblock %}
+{% block page_title %}{{ activity.name }}{% endblock %}
+{% block page_sub %}{{ activity.start_date_local.strftime('%d/%m/%Y às %H:%M') if activity.start_date_local else '' }} · {{ activity.sport_type }}{% endblock %}
+
+{% block content %}
+<div class="content">
+
+  <div style="margin-bottom:16px">
+    <a href="{{ url_for('dashboard.home') }}" class="btn btn-ghost btn-sm">← Voltar</a>
+  </div>
+
+  {# Stats topo #}
+  <div class="grid-4" style="margin-bottom:20px">
+    <div class="card"><span class="stat-icon">📍</span>
+      <div class="stat-val">{{ activity.distance_km }}<span class="stat-unit">km</span></div>
+      <div class="stat-label">Distância</div>
+    </div>
+    <div class="card"><span class="stat-icon">⏱️</span>
+      <div class="stat-val">{{ activity.moving_time_str }}</div>
+      <div class="stat-label">Tempo em movimento</div>
+    </div>
+    <div class="card"><span class="stat-icon">⚡</span>
+      <div class="stat-val">{{ activity.pace_str }}<span class="stat-unit">/km</span></div>
+      <div class="stat-label">Pace médio</div>
+    </div>
+    <div class="card"><span class="stat-icon">⛰️</span>
+      <div class="stat-val">{{ activity.total_elevation_gain|int if activity.total_elevation_gain else '—' }}<span class="stat-unit">m</span></div>
+      <div class="stat-label">Elevação</div>
+    </div>
+  </div>
+
+  <div class="grid-4" style="margin-bottom:20px">
+    <div class="card"><span class="stat-icon">❤️</span>
+      <div class="stat-val">{{ activity.average_heartrate|int if activity.average_heartrate else '—' }}<span class="stat-unit">bpm</span></div>
+      <div class="stat-label">FC média</div>
+    </div>
+    <div class="card"><span class="stat-icon">💥</span>
+      <div class="stat-val">{{ activity.max_heartrate|int if activity.max_heartrate else '—' }}<span class="stat-unit">bpm</span></div>
+      <div class="stat-label">FC máxima</div>
+    </div>
+    <div class="card"><span class="stat-icon">🔥</span>
+      <div class="stat-val">{{ activity.calories|int if activity.calories else '—' }}<span class="stat-unit">kcal</span></div>
+      <div class="stat-label">Calorias</div>
+    </div>
+    <div class="card"><span class="stat-icon">😓</span>
+      <div class="stat-val">{{ activity.suffer_score if activity.suffer_score else '—' }}</div>
+      <div class="stat-label">Suffer Score</div>
+    </div>
+  </div>
+
+  {# Gráficos de streams #}
+  {% if activity.streams %}
+  <div class="grid-2" style="margin-bottom:20px">
+    {% if activity.streams.heartrate %}
+    <div class="card">
+      <div class="chart-header"><div><div class="card-title">Frequência Cardíaca</div><div class="card-sub">bpm ao longo da corrida</div></div></div>
+      <canvas id="chartHR" height="160"></canvas>
+    </div>
+    {% endif %}
+    {% if activity.streams.altitude %}
+    <div class="card">
+      <div class="chart-header"><div><div class="card-title">Perfil de Altitude</div><div class="card-sub">metros ao longo da corrida</div></div></div>
+      <canvas id="chartAlt" height="160"></canvas>
+    </div>
+    {% endif %}
+  </div>
+  {% if activity.streams.velocity %}
+  <div class="card" style="margin-bottom:20px">
+    <div class="chart-header"><div><div class="card-title">Velocidade / Pace</div><div class="card-sub">m/s ao longo da corrida</div></div></div>
+    <canvas id="chartVel" height="110"></canvas>
+  </div>
+  {% endif %}
+  {% endif %}
+
+  {# Splits #}
+  {% if activity.splits_metric %}
+  <div class="card">
+    <div class="section-hd" style="margin-bottom:14px">
+      <div class="section-title">Splits por Km</div>
+    </div>
+    <div style="overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse;font-size:12.5px">
+        <thead>
+          <tr style="color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;font-size:10px;border-bottom:1px solid var(--border)">
+            <th style="padding:8px 12px;text-align:left">Km</th>
+            <th style="padding:8px 12px;text-align:right">Distância</th>
+            <th style="padding:8px 12px;text-align:right">Pace</th>
+            <th style="padding:8px 12px;text-align:right">FC Média</th>
+            <th style="padding:8px 12px;text-align:right">Elevação</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for split in activity.splits_metric %}
+          <tr style="border-bottom:1px solid rgba(139,92,246,.08);transition:background .15s" onmouseover="this.style.background='var(--surface-2)'" onmouseout="this.style.background=''">
+            <td style="padding:10px 12px;font-family:var(--font-d);font-weight:600;color:var(--primary-light)">{{ loop.index }}</td>
+            <td style="padding:10px 12px;text-align:right">{{ (split.distance/1000)|round(2) }} km</td>
+            <td style="padding:10px 12px;text-align:right;font-family:var(--font-d);font-weight:600">
+              {% if split.average_speed and split.average_speed > 0 %}
+                {% set secs = (1000 / split.average_speed)|int %}
+                {{ (secs // 60)|int }}'{{ '%02d'|format(secs % 60) }}"
+              {% else %}—{% endif %}
+            </td>
+            <td style="padding:10px 12px;text-align:right">
+              {% if split.average_heartrate %}{{ split.average_heartrate|int }} bpm{% else %}—{% endif %}
+            </td>
+            <td style="padding:10px 12px;text-align:right">
+              {% if split.elevation_difference %}
+                <span style="color:{% if split.elevation_difference > 0 %}var(--warning){% else %}var(--success){% endif %}">
+                  {{ '%+.0f'|format(split.elevation_difference) }}m
+                </span>
+              {% else %}—{% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const streams = {{ activity.streams | tojson if activity.streams else '{}' }};
+
+function timeLabels(timeArr) {
+  if (!timeArr) return [];
+  return timeArr.map(t => {
+    const m = Math.floor(t/60), s = t%60;
+    return t % 300 === 0 ? `${m}m` : '';
+  });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const labels = timeLabels(streams.time);
+
+  if (streams.heartrate && document.getElementById('chartHR')) {
+    new Chart(document.getElementById('chartHR'), {
+      type: 'line',
+      data: { labels,
+        datasets: [{ data: streams.heartrate, borderColor:'#F87171',
+          backgroundColor: ctx => gradFill(ctx,'rgba(248,113,113,.2)','rgba(248,113,113,0)'),
+          fill:true, tension:0.3, pointRadius:0, borderWidth:1.5 }]
+      },
+      options: { ...GRID_OPT, scales: { ...GRID_OPT.scales,
+        y: { ...GRID_OPT.scales.y, ticks: { callback: v => v+' bpm', color:'#6B6485' } }
+      }}
+    });
+  }
+
+  if (streams.altitude && document.getElementById('chartAlt')) {
+    new Chart(document.getElementById('chartAlt'), {
+      type: 'line',
+      data: { labels,
+        datasets: [{ data: streams.altitude, borderColor:'#A78BFA',
+          backgroundColor: ctx => gradFill(ctx,'rgba(167,139,250,.2)','rgba(167,139,250,0)'),
+          fill:true, tension:0.4, pointRadius:0, borderWidth:1.5 }]
+      },
+      options: { ...GRID_OPT, scales: { ...GRID_OPT.scales,
+        y: { ...GRID_OPT.scales.y, ticks: { callback: v => v+'m', color:'#6B6485' } }
+      }}
+    });
+  }
+
+  if (streams.velocity && document.getElementById('chartVel')) {
+    new Chart(document.getElementById('chartVel'), {
+      type: 'line',
+      data: { labels,
+        datasets: [{ data: streams.velocity, borderColor:'#34D399',
+          backgroundColor: ctx => gradFill(ctx,'rgba(52,211,153,.15)','rgba(52,211,153,0)'),
+          fill:true, tension:0.3, pointRadius:0, borderWidth:1.5 }]
+      },
+      options: { ...GRID_OPT, scales: { ...GRID_OPT.scales,
+        y: { ...GRID_OPT.scales.y, ticks: { callback: v => v.toFixed(1)+' m/s', color:'#6B6485' } }
+      }}
+    });
+  }
+});
+</script>
+{% endblock %}
