@@ -1,0 +1,506 @@
+{% extends 'base.html' %}
+{% block title %}Relatório{% endblock %}
+{% block page_title %}Relatório de Performance{% endblock %}
+{% block page_sub %}Análise detalhada · Exportação PDF{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ── Filtros inteligentes ── */
+.filter-bar {
+  background: var(--glass);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  box-shadow: var(--glass-shadow);
+  padding: 20px 24px;
+  margin-bottom: 22px;
+}
+.filter-bar-title {
+  font-family: var(--font-display);
+  font-size: 13px; font-weight: 600;
+  color: var(--text-2);
+  margin-bottom: 14px;
+  display: flex; align-items: center; gap: 8px;
+}
+.filter-bar-title svg { width:15px;height:15px;stroke:var(--brand) }
+.filter-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 12px;
+}
+.filter-group { display: flex; flex-direction: column; gap: 5px; }
+.filter-label {
+  font-size: 10px; font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: .08em;
+}
+.filter-select, .filter-input {
+  background: rgba(255,255,255,.9);
+  border: 1.5px solid rgba(139,77,184,.15);
+  border-radius: var(--radius-sm);
+  padding: 8px 11px;
+  font-size: 12.5px; font-family: var(--font-body);
+  color: var(--text);
+  outline: none;
+  transition: all .2s;
+  width: 100%;
+}
+.filter-select:focus, .filter-input:focus {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px rgba(139,77,184,.10);
+}
+
+/* Chips de atletas */
+.athletes-chips {
+  display: flex; flex-wrap: wrap; gap: 7px;
+  margin-top: 12px;
+}
+.athlete-chip {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 12px;
+  border-radius: 20px;
+  border: 1.5px solid rgba(139,77,184,.2);
+  background: rgba(255,255,255,.8);
+  font-size: 12px; font-weight: 500;
+  color: var(--text-2);
+  cursor: pointer;
+  transition: all .2s;
+  user-select: none;
+}
+.athlete-chip.selected {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: white;
+  box-shadow: 0 2px 10px var(--brand-glow);
+}
+.athlete-chip:hover:not(.selected) {
+  border-color: var(--brand);
+  color: var(--brand);
+}
+.chip-av {
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--brand-dark), var(--brand-light));
+  display: grid; place-items: center;
+  font-size: 9px; font-weight: 700; color: white;
+  flex-shrink: 0;
+}
+.chip-av-img {
+  width: 20px; height: 20px;
+  border-radius: 50%; object-fit: cover;
+}
+
+.filter-actions {
+  display: flex; align-items: center; gap: 10px; margin-top: 16px;
+  flex-wrap: wrap;
+}
+
+/* Preview do relatório */
+.preview-section {
+  background: var(--glass);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  box-shadow: var(--glass-shadow);
+  padding: 22px;
+  margin-bottom: 22px;
+}
+
+/* Tabela preview */
+.preview-table {
+  width: 100%; border-collapse: collapse;
+  font-size: 12.5px;
+}
+.preview-table th {
+  background: linear-gradient(135deg, var(--brand-dark), var(--brand));
+  color: white; font-weight: 600;
+  padding: 10px 14px; text-align: left;
+  font-size: 11px; text-transform: uppercase;
+  letter-spacing: .07em;
+}
+.preview-table th:first-child { border-radius: 8px 0 0 0; }
+.preview-table th:last-child  { border-radius: 0 8px 0 0; }
+.preview-table td {
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(139,77,184,.08);
+  color: var(--text-2);
+  vertical-align: middle;
+}
+.preview-table tr:nth-child(even) td { background: rgba(139,77,184,.03); }
+.preview-table tr:hover td { background: rgba(139,77,184,.06); }
+.preview-table .rank { font-weight: 700; color: var(--brand); }
+.preview-table .name-cell { font-weight: 600; color: var(--text); }
+.preview-table .val-km { font-weight: 700; color: var(--brand); font-family: var(--font-display); }
+.preview-table .val-teal { font-weight: 600; color: var(--teal); }
+.preview-table .val-rose { font-weight: 600; color: var(--rose); }
+.badge-connected { font-size: 10px; padding: 2px 8px; border-radius: 20px; }
+.badge-yes { background: var(--success-soft); color: var(--success); }
+.badge-no  { background: var(--danger-soft);  color: var(--danger); }
+
+/* PDF button */
+.btn-pdf {
+  display: inline-flex; align-items: center; gap: 9px;
+  padding: 12px 24px;
+  background: linear-gradient(135deg, var(--brand-dark), var(--brand-light));
+  color: white; border: none; border-radius: var(--radius-sm);
+  font-size: 14px; font-weight: 700;
+  font-family: var(--font-body);
+  cursor: pointer; transition: all .25s;
+  box-shadow: 0 6px 20px var(--brand-glow);
+  letter-spacing: .04em;
+  text-decoration: none;
+}
+.btn-pdf:hover { transform: translateY(-2px); box-shadow: 0 10px 28px var(--brand-glow); }
+.btn-pdf svg { width:18px;height:18px;stroke:white }
+
+/* Loading spinner */
+.spinner {
+  width: 18px; height: 18px;
+  border: 2px solid rgba(255,255,255,.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+  display: none;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Insight cards */
+.insight-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; margin-bottom: 22px; }
+.insight-card {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--glass-shadow);
+  padding: 16px;
+  position: relative; overflow: hidden;
+}
+.insight-card::before {
+  content:''; position:absolute; top:0;left:0;right:0; height:3px;
+}
+.insight-card.purple::before { background: linear-gradient(90deg,var(--brand-dark),var(--brand-light)); }
+.insight-card.teal::before   { background: linear-gradient(90deg,#0D9488,#2DD4BF); }
+.insight-card.rose::before   { background: linear-gradient(90deg,#BE185D,#EC4899); }
+.insight-val {
+  font-family: var(--font-display); font-size: 28px; font-weight: 700;
+  color: var(--text); line-height: 1;
+}
+.insight-label { font-size: 10.5px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .09em; margin-top: 6px; }
+.insight-sub   { font-size: 12px; color: var(--text-2); margin-top: 8px; font-weight: 500; }
+
+@media (max-width: 768px) {
+  .insight-grid { grid-template-columns: repeat(2,1fr); }
+  .filter-grid  { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 500px) {
+  .insight-grid { grid-template-columns: 1fr; }
+  .filter-grid  { grid-template-columns: 1fr; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="content">
+
+  <!-- ── FILTROS INTELIGENTES ── -->
+  <div class="filter-bar">
+    <div class="filter-bar-title">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+      Filtros Inteligentes
+    </div>
+
+    <div class="filter-grid">
+      <div class="filter-group">
+        <label class="filter-label">Período</label>
+        <select class="filter-select" id="fPeriod" onchange="onFilterChange()">
+          <option value="week">Esta semana</option>
+          <option value="month" selected>Este mês</option>
+          <option value="3m">Últimos 3 meses</option>
+          <option value="6m">Últimos 6 meses</option>
+          <option value="year">Este ano</option>
+          <option value="all">Todo o histórico</option>
+          <option value="custom">Personalizado...</option>
+        </select>
+      </div>
+      <div class="filter-group" id="dateFromWrap" style="display:none">
+        <label class="filter-label">De</label>
+        <input class="filter-input" type="date" id="fDateFrom" onchange="onFilterChange()">
+      </div>
+      <div class="filter-group" id="dateToWrap" style="display:none">
+        <label class="filter-label">Até</label>
+        <input class="filter-input" type="date" id="fDateTo" onchange="onFilterChange()">
+      </div>
+      <div class="filter-group">
+        <label class="filter-label">Tipo de treino</label>
+        <select class="filter-select" id="fSport" onchange="onFilterChange()">
+          <option value="">Todos</option>
+          <option value="Run">Corrida</option>
+          <option value="TrailRun">Trilha</option>
+          <option value="Walk">Caminhada</option>
+          <option value="Hike">Hiking</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label class="filter-label">Km mínimo</label>
+        <input class="filter-input" type="number" id="fMinKm" placeholder="0" min="0"
+               onchange="onFilterChange()" style="width:100%">
+      </div>
+      <div class="filter-group">
+        <label class="filter-label">Km máximo</label>
+        <input class="filter-input" type="number" id="fMaxKm" placeholder="Sem limite" min="0"
+               onchange="onFilterChange()" style="width:100%">
+      </div>
+    </div>
+
+    <!-- Chips de atletas -->
+    <div style="margin-top:16px">
+      <div class="filter-label" style="margin-bottom:8px">Atletas incluídas no relatório</div>
+      <div class="athletes-chips" id="athletesChips">
+        <div style="font-size:12px;color:var(--text-muted)">Carregando atletas...</div>
+      </div>
+    </div>
+
+    <div class="filter-actions">
+      <button class="btn btn-primary" onclick="applyFilters()">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" style="width:14px;height:14px;stroke:white"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        Atualizar análise
+      </button>
+      <button class="btn btn-ghost btn-sm" onclick="resetFilters()">Limpar filtros</button>
+    </div>
+  </div>
+
+  <!-- ── PREVIEW DE INDICADORES ── -->
+  <div class="insight-grid" id="insightGrid">
+    <div class="insight-card purple">
+      <div class="insight-val" id="igRuns">—</div>
+      <div class="insight-label">Corridas no período</div>
+      <div class="insight-sub" id="igRunsSub">—</div>
+    </div>
+    <div class="insight-card teal">
+      <div class="insight-val" id="igKm">—</div>
+      <div class="insight-label">Km do grupo</div>
+      <div class="insight-sub" id="igKmSub">—</div>
+    </div>
+    <div class="insight-card rose">
+      <div class="insight-val" id="igParticipation">—</div>
+      <div class="insight-label">Participação</div>
+      <div class="insight-sub" id="igPartSub">—</div>
+    </div>
+  </div>
+
+  <!-- ── TABELA PREVIEW ── -->
+  <div class="preview-section">
+    <div class="section-hd">
+      <div class="section-title">Prévia — Ranking de Atletas</div>
+      <div style="display:flex;gap:10px;align-items:center">
+        <span style="font-size:12px;color:var(--text-muted)" id="previewMeta">—</span>
+        <a id="btnDownload" class="btn-pdf" href="#" onclick="downloadPDF(event)">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <span id="btnLabel">Exportar PDF</span>
+          <div class="spinner" id="btnSpinner"></div>
+        </a>
+      </div>
+    </div>
+
+    <div id="previewTableWrap">
+      <div style="padding:24px;text-align:center;color:var(--text-muted);font-size:13px">
+        Clique em "Atualizar análise" para visualizar
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let selectedAthletes = new Set(); // set vazio = todas
+let allAthletes = [];
+let currentData = null;
+
+// ── Carregar atletas ──
+async function loadAthletes() {
+  try {
+    const r = await fetch('/api/group/stats?period=all');
+    const d = await r.json();
+    allAthletes = d.athletes || [];
+
+    const container = document.getElementById('athletesChips');
+    container.innerHTML = '';
+
+    // Chip "Todas"
+    const all = document.createElement('div');
+    all.className = 'athlete-chip selected';
+    all.id = 'chip-all';
+    all.innerHTML = '<span style="font-size:11px">✓</span> Todas';
+    all.onclick = () => toggleAll();
+    container.appendChild(all);
+
+    allAthletes.forEach(ath => {
+      const chip = document.createElement('div');
+      chip.className = 'athlete-chip';
+      chip.dataset.id = ath.id;
+      chip.innerHTML = `
+        <div class="chip-av">${ath.initials}</div>
+        ${ath.name.split(' ')[0]}
+      `;
+      chip.onclick = () => toggleAthlete(ath.id, chip);
+      container.appendChild(chip);
+    });
+  } catch(e) { console.error(e); }
+}
+
+function toggleAll() {
+  selectedAthletes.clear();
+  document.querySelectorAll('.athlete-chip').forEach(c => c.classList.remove('selected'));
+  document.getElementById('chip-all').classList.add('selected');
+}
+
+function toggleAthlete(id, chip) {
+  document.getElementById('chip-all').classList.remove('selected');
+  if (selectedAthletes.has(id)) {
+    selectedAthletes.delete(id);
+    chip.classList.remove('selected');
+  } else {
+    selectedAthletes.add(id);
+    chip.classList.add('selected');
+  }
+  if (selectedAthletes.size === 0) toggleAll();
+}
+
+// ── Filtro período custom ──
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('fPeriod').addEventListener('change', function() {
+    const isCustom = this.value === 'custom';
+    document.getElementById('dateFromWrap').style.display = isCustom ? 'flex' : 'none';
+    document.getElementById('dateToWrap').style.display   = isCustom ? 'flex' : 'none';
+  });
+  loadAthletes();
+  applyFilters();
+});
+
+function onFilterChange() {
+  // Auto-apply com debounce leve
+  clearTimeout(window._filterTimer);
+  window._filterTimer = setTimeout(applyFilters, 600);
+}
+
+function resetFilters() {
+  document.getElementById('fPeriod').value  = 'month';
+  document.getElementById('fSport').value   = '';
+  document.getElementById('fMinKm').value   = '';
+  document.getElementById('fMaxKm').value   = '';
+  document.getElementById('dateFromWrap').style.display = 'none';
+  document.getElementById('dateToWrap').style.display   = 'none';
+  toggleAll();
+  applyFilters();
+}
+
+function buildQueryParams() {
+  const p = new URLSearchParams();
+  p.set('period',    document.getElementById('fPeriod').value);
+  p.set('sport_type',document.getElementById('fSport').value);
+  const minKm = document.getElementById('fMinKm').value;
+  const maxKm = document.getElementById('fMaxKm').value;
+  if (minKm) p.set('min_km', minKm);
+  if (maxKm) p.set('max_km', maxKm);
+  const df = document.getElementById('fDateFrom')?.value;
+  const dt = document.getElementById('fDateTo')?.value;
+  if (df) p.set('date_from', df);
+  if (dt) p.set('date_to',   dt);
+  selectedAthletes.forEach(id => p.append('athlete_id', id));
+  return p;
+}
+
+async function applyFilters() {
+  const params = buildQueryParams();
+  try {
+    const r = await fetch('/api/group/stats?' + params.toString());
+    const d = await r.json();
+    currentData = d;
+    renderPreview(d.athletes || []);
+    renderInsights(d.athletes || []);
+  } catch(e) { console.error(e); }
+}
+
+function renderInsights(athletes) {
+  const trained = athletes.filter(a => a.runs > 0);
+  const totalKm = athletes.reduce((s,a) => s + a.km, 0);
+  const totalRuns = athletes.reduce((s,a) => s + a.runs, 0);
+  const pct = athletes.length ? Math.round(trained.length / athletes.length * 100) : 0;
+
+  document.getElementById('igRuns').textContent = totalRuns;
+  document.getElementById('igRunsSub').textContent = `${athletes.length} atletas no filtro`;
+  document.getElementById('igKm').textContent = totalKm.toFixed(1) + ' km';
+  document.getElementById('igKmSub').textContent = `média ${athletes.length ? (totalKm/athletes.length).toFixed(1) : 0} km/atleta`;
+  document.getElementById('igParticipation').textContent = pct + '%';
+  document.getElementById('igPartSub').textContent = `${trained.length} de ${athletes.length} treinaram`;
+  document.getElementById('previewMeta').textContent = `${athletes.length} atletas · ${totalRuns} corridas`;
+}
+
+function renderPreview(athletes) {
+  if (!athletes.length) {
+    document.getElementById('previewTableWrap').innerHTML =
+      '<div style="padding:24px;text-align:center;color:var(--text-muted);font-size:13px">Nenhuma atleta encontrada para os filtros aplicados.</div>';
+    return;
+  }
+  const COLORS = ['#8B4DB8','#EC4899','#2BBFA4','#D4A843','#A78BFA','#34D399','#FB7185','#60A5FA'];
+  const medals = ['🥇','🥈','🥉'];
+
+  let html = `<div style="overflow-x:auto"><table class="preview-table">
+    <thead><tr>
+      <th>#</th><th>Atleta</th><th>Km</th><th>Corridas</th>
+      <th>Pace médio</th><th>Strava</th>
+    </tr></thead><tbody>`;
+
+  athletes.forEach((a, i) => {
+    const rank  = medals[i] || `#${i+1}`;
+    const color = COLORS[i % COLORS.length];
+    html += `<tr>
+      <td class="rank">${rank}</td>
+      <td class="name-cell">${a.name}</td>
+      <td><span style="font-weight:700;color:${color};font-family:var(--font-display);font-size:14px">${a.km}</span></td>
+      <td>${a.runs}</td>
+      <td class="val-teal">${a.avg_pace}</td>
+      <td><span class="badge-connected ${a.connected ? 'badge-yes' : 'badge-no'}">${a.connected ? '● Conectado' : '○ Offline'}</span></td>
+    </tr>`;
+  });
+
+  html += '</tbody></table></div>';
+  document.getElementById('previewTableWrap').innerHTML = html;
+}
+
+async function downloadPDF(e) {
+  e.preventDefault();
+  const btn     = document.getElementById('btnDownload');
+  const label   = document.getElementById('btnLabel');
+  const spinner = document.getElementById('btnSpinner');
+
+  label.textContent = 'Gerando PDF...';
+  spinner.style.display = 'block';
+  btn.style.pointerEvents = 'none';
+
+  try {
+    const params = buildQueryParams();
+    const resp   = await fetch('/reports/generate?' + params.toString());
+    if (!resp.ok) throw new Error('Erro ao gerar relatório');
+
+    const blob = await resp.blob();
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    const now  = new Date().toISOString().slice(0,10);
+    a.href     = url;
+    a.download = `montania_relatorio_${now}.pdf`;
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch(err) {
+    alert('Erro ao gerar o relatório. Tente novamente.');
+    console.error(err);
+  } finally {
+    label.textContent = 'Exportar PDF';
+    spinner.style.display = 'none';
+    btn.style.pointerEvents = 'auto';
+  }
+}
+</script>
+{% endblock %}
