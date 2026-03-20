@@ -99,7 +99,11 @@ async function loadActivities(reset=true) {
     const trailIcon = `<svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke="var(--brand)"><path d="M3 17l4-8 4 4 4-6 4 8"/></svg>`;
 
     d.activities.forEach(a => {
-      const dt = a.start_date_local ? new Date(a.start_date_local) : null;
+      const dt = a.start_date_local ? (() => {
+          // Strava retorna horário local — já está em horário de Brasília
+          const d = new Date(a.start_date_local);
+          return isNaN(d) ? null : d;
+        })() : null;
       const dateStr = dt ? dt.toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'}) : '';
       const icon = a.sport_type === 'TrailRun' ? trailIcon : runIcon;
       list.innerHTML += `
