@@ -15,6 +15,7 @@ class User(UserMixin, db.Model):
     role       = db.Column(db.String(20), nullable=False, default='athlete')
     # roles: 'owner' | 'manager' | 'athlete'
     active     = db.Column(db.Boolean, default=True)
+    avatar_url = db.Column(db.String(512), nullable=True)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
     strava_token = db.relationship('StravaToken', backref='user', uselist=False, cascade='all, delete-orphan')
