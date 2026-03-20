@@ -85,6 +85,14 @@
 {% block content %}
 <div class="content">
 
+  <!-- Seletor de período — mobile chips (visível só em mobile) -->
+  <div class="mobile-period-select" id="mobilePeriodChips" style="display:none">
+    <button class="period-chip" onclick="setPeriod('week',this)">Esta semana</button>
+    <button class="period-chip active" onclick="setPeriod('month',this)">Este mês</button>
+    <button class="period-chip" onclick="setPeriod('year',this)">Este ano</button>
+  </div>
+
+
   <!-- Hero Banner -->
   <div class="hero-banner">
     <div class="hero-av" onclick="document.getElementById('avatarInput').click()" title="Trocar foto">
@@ -395,6 +403,19 @@ function uploadAvatar(input) {
   reader.readAsDataURL(file);
 }
 
-document.addEventListener('DOMContentLoaded', loadAll);
+// Mobile: mostrar chips de período
+function checkMobile() {
+  const chips = document.getElementById('mobilePeriodChips');
+  if (chips) chips.style.display = window.innerWidth <= 600 ? 'flex' : 'none';
+}
+function setPeriod(period, btn) {
+  document.querySelectorAll('.period-chip').forEach(c => c.classList.remove('active'));
+  btn.classList.add('active');
+  const sel = document.getElementById('periodSelect');
+  if (sel) sel.value = period;
+  loadAll();
+}
+window.addEventListener('resize', checkMobile);
+document.addEventListener('DOMContentLoaded', () => { checkMobile(); loadAll(); });
 </script>
 {% endblock %}
