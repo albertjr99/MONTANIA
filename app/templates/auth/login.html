@@ -94,6 +94,14 @@ input::placeholder{color:var(--text-faint)}
   <!-- Form -->
   <div class="form-panel">
     <div class="form-inner">
+      <!-- Logo visível só no mobile (hero fica oculto) -->
+      <div class="mobile-login-logo" style="display:none" id="mobileLogo">
+        <div class="mobile-login-logo-mark">
+          <img src="{{ LOGO_B64 }}" alt="Montania">
+        </div>
+        <div class="mobile-login-logo-text">MONTANIA</div>
+      </div>
+
       <div class="form-title">Bem-vinda</div>
       <div class="form-sub">Acesse sua conta para continuar</div>
 
@@ -130,5 +138,13 @@ input::placeholder{color:var(--text-faint)}
   </div>
 
 </div>
+<script>
+function checkLoginMobile() {
+  const logo = document.getElementById('mobileLogo');
+  if (logo) logo.style.display = window.innerWidth <= 768 ? 'flex' : 'none';
+}
+window.addEventListener('resize', checkLoginMobile);
+document.addEventListener('DOMContentLoaded', checkLoginMobile);
+</script>
 </body>
 </html>
