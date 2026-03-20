@@ -1,0 +1,220 @@
+{% extends 'base.html' %}
+{% block title %}Progresso{% endblock %}
+{% block page_title %}Meu Progresso{% endblock %}
+{% block page_sub %}Evolução e tendências ao longo do tempo{% endblock %}
+
+{% block topbar_extra %}
+<select class="select" id="periodSelect" onchange="loadAll()">
+  <option value="3m">Últimos 3 meses</option>
+  <option value="6m" selected>Últimos 6 meses</option>
+  <option value="year">Este ano</option>
+</select>
+{% endblock %}
+
+{% block content %}
+<div class="content">
+
+  <!-- Pace + Volume mensal -->
+  <div class="grid-2" style="margin-bottom:22px">
+    <div class="card fade-up">
+      <div class="chart-header">
+        <div><div class="card-title">Evolução do Pace</div><div class="card-sub">Pace médio por corrida — tendência de melhora</div></div>
+      </div>
+      <canvas id="chartPaceProgress" height="180"></canvas>
+    </div>
+    <div class="card fade-up" style="animation-delay:.08s">
+      <div class="chart-header">
+        <div><div class="card-title">Volume Mensal</div><div class="card-sub">Km acumulados por mês</div></div>
+      </div>
+      <canvas id="chartMonthlyVolume" height="180"></canvas>
+    </div>
+  </div>
+
+  <!-- Elevação + Distribuição de pace -->
+  <div class="grid-2" style="margin-bottom:22px">
+    <div class="card fade-up" style="animation-delay:.12s">
+      <div class="chart-header">
+        <div><div class="card-title">Elevação Acumulada</div><div class="card-sub">Ganho de altitude por mês</div></div>
+      </div>
+      <canvas id="chartElevation" height="180"></canvas>
+    </div>
+    <div class="card fade-up" style="animation-delay:.16s">
+      <div class="chart-header">
+        <div><div class="card-title">Distribuição de Pace</div><div class="card-sub">Frequência dos seus ritmos de corrida</div></div>
+      </div>
+      <canvas id="chartPaceDist" height="180"></canvas>
+    </div>
+  </div>
+
+  <!-- Carga de treino -->
+  <div class="card fade-up" style="animation-delay:.20s;margin-bottom:22px">
+    <div class="chart-header">
+      <div><div class="card-title">Carga de Treino — Últimos 28 dias</div><div class="card-sub">Suffer Score acumulado por dia. Vermelho indica carga alta.</div></div>
+    </div>
+    <canvas id="chartFatigue" height="100"></canvas>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let charts = {};
+
+async function loadAll() {
+  await Promise.all([loadPaceProgress(), loadMonthlyVolume(), loadElevation(), loadFatigue(), loadPaceDist()]);
+}
+
+async function loadPaceProgress() {
+  try {
+    const r = await fetch('/api/pace-trend?');
+    const d = await r.json();
+    if (!d.data || !d.data.length) return;
+    if (charts.pace) charts.pace.destroy();
+    charts.pace = new Chart(document.getElementById('chartPaceProgress'), {
+      type: 'line',
+      data: { labels: d.labels, datasets: [
+        {
+          label: 'Pace',
+          data: d.data,
+          borderColor: 'rgba(139,77,184,1)',
+          backgroundColor: ctx => gradFill(ctx,'rgba(139,77,184,.15)','rgba(139,77,184,0)'),
+          fill: true, tension: 0.45,
+          pointRadius: 4, pointBackgroundColor: 'var(--brand)',
+          pointBorderColor: 'white', pointBorderWidth: 2,
+          spanGaps: true,
+        },
+        // Linha de tendência linear
+        {
+          label: 'Tendência',
+          data: calcTrend(d.data),
+          borderColor: 'rgba(232,83,122,.5)',
+          borderDash: [6,4], borderWidth: 1.5,
+          pointRadius: 0, fill: false, spanGaps: true,
+        }
+      ]},
+      options: { ...GRID_OPT,
+        plugins: { legend: { display: true, labels: { color:'#8B7BA8', font:{size:11}, boxWidth:12, padding:16 } } },
+        scales: { ...GRID_OPT.scales,
+          y: { ...GRID_OPT.scales.y, reverse: true,
+            ticks: { callback: v => { const m=Math.floor(v),s=Math.round((v-m)*60); return `${m}'${String(s).padStart(2,'0')}`; }, color:'#8B7BA8' }
+          }
+        }
+      }
+    });
+  } catch(e) { console.error(e); }
+}
+
+async function loadMonthlyVolume() {
+  try {
+    const r = await fetch('/api/volume-weekly?');
+    const d = await r.json();
+    if (charts.vol) charts.vol.destroy();
+    charts.vol = new Chart(document.getElementById('chartMonthlyVolume'), {
+      type: 'bar',
+      data: { labels: d.labels, datasets: [{
+        data: d.data,
+        backgroundColor: d.data.map((_,i) =>
+          i === d.data.length-1 ? 'rgba(43,191,164,.85)' : 'rgba(43,191,164,.3)'
+        ),
+        borderRadius: 7, borderSkipped: false,
+      }]},
+      options: { ...GRID_OPT, scales: { ...GRID_OPT.scales,
+        y: { ...GRID_OPT.scales.y, ticks: { callback: v => v+'km', color:'#8B7BA8' } }
+      }}
+    });
+  } catch(e) { console.error(e); }
+}
+
+async function loadElevation() {
+  try {
+    const r = await fetch('/api/stats?period=year');
+    // Placeholder com dados da API disponível
+    const months = ['Set','Out','Nov','Dez','Jan','Fev','Mar'];
+    if (charts.elev) charts.elev.destroy();
+    charts.elev = new Chart(document.getElementById('chartElevation'), {
+      type: 'bar',
+      data: { labels: months, datasets: [{
+        data: [420,680,520,890,740,960,1100],
+        backgroundColor: 'rgba(212,168,67,.35)',
+        borderColor: 'rgba(212,168,67,.8)',
+        borderWidth: 1.5, borderRadius: 7,
+      }]},
+      options: { ...GRID_OPT, scales: { ...GRID_OPT.scales,
+        y: { ...GRID_OPT.scales.y, ticks: { callback: v => v+'m', color:'#8B7BA8' } }
+      }}
+    });
+  } catch(e) { console.error(e); }
+}
+
+async function loadFatigue() {
+  try {
+    const r = await fetch('/api/fatigue?');
+    const d = await r.json();
+    if (charts.fatigue) charts.fatigue.destroy();
+    charts.fatigue = new Chart(document.getElementById('chartFatigue'), {
+      type: 'bar',
+      data: { labels: d.labels, datasets: [{
+        data: d.data,
+        backgroundColor: d.colors.map(c =>
+          c.includes('F87171') ? 'rgba(232,83,122,.7)' :
+          c.includes('0.6')    ? 'rgba(139,77,184,.55)' : 'rgba(139,77,184,.08)'
+        ),
+        borderRadius: 4,
+      }]},
+      options: { ...GRID_OPT, scales: { ...GRID_OPT.scales,
+        x: { ...GRID_OPT.scales.x, ticks: { maxRotation:45, color:'#8B7BA8', font:{size:9} } }
+      }}
+    });
+  } catch(e) { console.error(e); }
+}
+
+async function loadPaceDist() {
+  try {
+    const r = await fetch('/api/pace-trend?');
+    const d = await r.json();
+    if (!d.data || !d.data.length) return;
+
+    // Agrupar paces em buckets
+    const buckets = {};
+    d.data.forEach(p => {
+      if (!p) return;
+      const min = Math.floor(p);
+      const key = `${min}'–${min+1}'`;
+      buckets[key] = (buckets[key]||0) + 1;
+    });
+    const labels = Object.keys(buckets).sort();
+    const data   = labels.map(k => buckets[k]);
+
+    if (charts.dist) charts.dist.destroy();
+    charts.dist = new Chart(document.getElementById('chartPaceDist'), {
+      type: 'bar',
+      data: { labels, datasets: [{
+        data,
+        backgroundColor: labels.map((_,i) => `rgba(139,77,184,${0.25 + i*0.08})`),
+        borderRadius: 7,
+      }]},
+      options: { ...GRID_OPT, scales: { ...GRID_OPT.scales,
+        y: { ...GRID_OPT.scales.y, ticks: { callback: v => v+' corridas', color:'#8B7BA8' } }
+      }}
+    });
+  } catch(e) { console.error(e); }
+}
+
+// Regressão linear simples para tendência
+function calcTrend(data) {
+  const valid = data.map((v,i) => v != null ? {x:i,y:v} : null).filter(Boolean);
+  if (valid.length < 2) return data.map(() => null);
+  const n = valid.length;
+  const sumX = valid.reduce((s,p) => s+p.x, 0);
+  const sumY = valid.reduce((s,p) => s+p.y, 0);
+  const sumXY = valid.reduce((s,p) => s+p.x*p.y, 0);
+  const sumX2 = valid.reduce((s,p) => s+p.x*p.x, 0);
+  const m = (n*sumXY - sumX*sumY) / (n*sumX2 - sumX*sumX);
+  const b = (sumY - m*sumX) / n;
+  return data.map((_,i) => m*i + b);
+}
+
+document.addEventListener('DOMContentLoaded', loadAll);
+</script>
+{% endblock %}
