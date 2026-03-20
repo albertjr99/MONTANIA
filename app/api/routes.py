@@ -202,7 +202,7 @@ def activity_detail(activity_id):
     return jsonify(a.to_dict())
 
 
-# ─── Grupo (managers/owner) ───
+# ─── Grupo (managers/owner) — com filtros inteligentes ───
 
 @api_bp.route('/group/stats')
 @login_required
@@ -210,38 +210,80 @@ def group_stats():
     if not current_user.is_manager:
         abort(403)
 
-    period = request.args.get('period', 'week')
-    now    = now_br()
-    start  = now - timedelta(days=7 if period == 'week' else 30)
+    period      = request.args.get('period', 'week')
+    sport_type  = request.args.get('sport_type', '')
+    athlete_ids = request.args.getlist('athlete_id', type=int)
+    date_from   = request.args.get('date_from', '')
+    date_to     = request.args.get('date_to', '')
+    min_km      = request.args.get('min_km', 0, type=float)
+    max_km      = request.args.get('max_km', 99999, type=float)
 
-    athletes = User.query.filter_by(role='athlete', active=True).all()
-    result   = []
+    now = now_br()
 
-    for ath in athletes:
-        acts = Activity.query.filter(
-            Activity.user_id == ath.id,
-            Activity.start_date_local >= start
+    # Resolver período
+    if date_from:
+        try:    start = datetime.strptime(date_from, '%Y-%m-%d')
+        except: start = now - timedelta(days=30)
+    elif period == 'week':   start = now - timedelta(days=7)
+    elif period == 'month':  start = now.replace(day=1)
+    elif period == '3m':     start = now - timedelta(days=90)
+    elif period == '6m':     start = now - timedelta(days=180)
+    elif period == 'year':   start = now.replace(month=1, day=1)
+    elif period == 'all':    start = datetime(2000, 1, 1)
+    else:                    start = now - timedelta(days=30)
+
+    end = datetime.strptime(date_to, '%Y-%m-%d') if date_to else now
+
+    # Atletas
+    if athlete_ids:
+        athletes = User.query.filter(
+            User.id.in_(athlete_ids), User.role=='athlete'
         ).all()
+    else:
+        athletes = User.query.filter_by(role='athlete', active=True).all()
 
-        km   = round(sum(a.distance_km for a in acts), 1)
-        runs = len(acts)
+    result = []
+    for ath in athletes:
+        q = Activity.query.filter(
+            Activity.user_id == ath.id,
+            Activity.start_date_local >= start,
+            Activity.start_date_local <= end,
+        )
+        if sport_type:
+            q = q.filter(Activity.sport_type == sport_type)
+        else:
+            q = q.filter(Activity.sport_type.in_(['Run','TrailRun','Walk','Hike']))
+        acts = q.all()
+
+        km    = round(sum(a.distance_km for a in acts), 1)
+        runs  = len(acts)
+        elev  = sum(a.total_elevation_gain or 0 for a in acts)
+        cal   = sum(a.calories or 0 for a in acts)
         paces = [a.pace_min_km for a in acts if a.pace_min_km]
+        hrs   = [a.average_heartrate for a in acts if a.average_heartrate]
         avg_pace = sum(paces)/len(paces) if paces else None
+
+        if km < min_km or km > max_km:
+            continue
 
         def fmt_pace(s):
             if not s: return '—'
             m = int(s//60); sec = int(s%60)
-            return f"{m}'{sec:02d}\""
+            return f"{m}\'{sec:02d}\""
 
         result.append({
-            'id':        ath.id,
-            'name':      ath.name,
-            'initials':  ''.join(p[0].upper() for p in ath.name.split()[:2]),
-            'km':        km,
-            'runs':      runs,
-            'avg_pace':  fmt_pace(avg_pace),
-            'connected': ath.strava_connected,
+            'id':           ath.id,
+            'name':         ath.name,
+            'initials':     ''.join(p[0].upper() for p in ath.name.split()[:2]),
+            'km':           km,
+            'runs':         runs,
+            'avg_pace':     fmt_pace(avg_pace),
+            'avg_pace_secs': avg_pace or 0,
+            'elevation':    int(elev),
+            'calories':     int(cal),
+            'avg_hr':       round(sum(hrs)/len(hrs), 1) if hrs else None,
+            'connected':    ath.strava_connected,
         })
 
     result.sort(key=lambda x: x['km'], reverse=True)
-    return jsonify({'athletes': result, 'period': period})
+    return jsonify({'athletes': result, 'period': period, 'total': len(result)})
