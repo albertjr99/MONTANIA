@@ -1,0 +1,144 @@
+{% extends 'base.html' %}
+{% block title %}Atividades{% endblock %}
+{% block page_title %}Atividades{% endblock %}
+{% block page_sub %}Histórico completo das suas corridas{% endblock %}
+
+{% block topbar_extra %}
+<select class="select" id="sportFilter" onchange="loadActivities(true)">
+  <option value="">Todos os tipos</option>
+  <option value="Run">Corrida</option>
+  <option value="TrailRun">Trilha</option>
+  <option value="Walk">Caminhada</option>
+  <option value="Hike">Hiking</option>
+</select>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.act-header-stats{display:flex;gap:14px;margin-bottom:22px;flex-wrap:wrap}
+.act-hstat{
+  background:var(--glass);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  border:1px solid var(--glass-border);border-radius:var(--radius-sm);
+  box-shadow:var(--glass-shadow);padding:14px 20px;
+  display:flex;align-items:center;gap:12px;flex:1;min-width:140px;
+}
+.act-hstat svg{width:20px;height:20px;stroke:var(--brand);flex-shrink:0}
+.act-hstat-val{font-family:var(--font-display);font-size:20px;font-weight:700;color:var(--text)}
+.act-hstat-key{font-size:10.5px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;margin-top:1px}
+.load-more{width:100%;padding:13px;background:rgba(139,77,184,.06);border:1.5px dashed rgba(139,77,184,.2);border-radius:var(--radius-sm);color:var(--brand);font-size:13px;font-weight:600;font-family:var(--font-body);cursor:pointer;transition:all .2s;margin-top:8px}
+.load-more:hover{background:rgba(139,77,184,.10);border-color:rgba(139,77,184,.35)}
+.empty-state{padding:48px 24px;text-align:center}
+.empty-state svg{width:52px;height:52px;stroke:var(--text-faint);margin-bottom:16px}
+.empty-title{font-family:var(--font-display);font-size:18px;color:var(--text-2);margin-bottom:8px}
+.empty-sub{font-size:13px;color:var(--text-muted);line-height:1.6}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="content">
+
+  <!-- Stats rápidos -->
+  <div class="act-header-stats" id="headerStats">
+    <div class="act-hstat">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      <div><div class="act-hstat-val" id="totalRuns">—</div><div class="act-hstat-key">Corridas</div></div>
+    </div>
+    <div class="act-hstat">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      <div><div class="act-hstat-val" id="totalKm">—</div><div class="act-hstat-key">km totais</div></div>
+    </div>
+    <div class="act-hstat">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M3 17l4-8 4 4 4-6 4 8"/></svg>
+      <div><div class="act-hstat-val" id="totalElev">—</div><div class="act-hstat-key">m elevação</div></div>
+    </div>
+    <div class="act-hstat">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+      <div><div class="act-hstat-val" id="totalCal">—</div><div class="act-hstat-key">kcal</div></div>
+    </div>
+  </div>
+
+  <!-- Lista -->
+  <div class="card">
+    <div id="activitiesList" style="min-height:200px"></div>
+    <button class="load-more" id="loadMoreBtn" onclick="loadMore()" style="display:none">Carregar mais</button>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let page = 1;
+let totalPages = 1;
+
+async function loadActivities(reset=true) {
+  if (reset) { page = 1; document.getElementById('activitiesList').innerHTML = '<div style="padding:24px;text-align:center;color:var(--text-muted);font-size:13px">Carregando...</div>'; }
+  try {
+    const r = await fetch(`/api/activities?page=${page}&limit=20`);
+    const d = await r.json();
+    totalPages = d.pages;
+    const list = document.getElementById('activitiesList');
+    if (reset) list.innerHTML = '';
+
+    if (!d.activities.length && reset) {
+      list.innerHTML = `<div class="empty-state">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        <div class="empty-title">Nenhuma atividade encontrada</div>
+        <div class="empty-sub">
+          {% if not current_user.strava_connected %}
+          <a href="{{ url_for('strava.connect') }}" style="color:var(--brand);font-weight:600">Conecte o Strava para importar suas corridas</a>
+          {% else %}
+          Suas atividades aparecerão aqui após a sincronização.
+          {% endif %}
+        </div>
+      </div>`;
+      return;
+    }
+
+    const runIcon = `<svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke="var(--brand)"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>`;
+    const trailIcon = `<svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke="var(--brand)"><path d="M3 17l4-8 4 4 4-6 4 8"/></svg>`;
+
+    d.activities.forEach(a => {
+      const dt = a.start_date_local ? new Date(a.start_date_local) : null;
+      const dateStr = dt ? dt.toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'}) : '';
+      const icon = a.sport_type === 'TrailRun' ? trailIcon : runIcon;
+      list.innerHTML += `
+        <div class="act-row" onclick="window.location='/dashboard/activity/${a.id}'" style="border-bottom:1px solid rgba(139,77,184,.06)">
+          <div class="act-icon-wrap">${icon}</div>
+          <div style="flex:1;min-width:0">
+            <div class="act-name">${a.name}</div>
+            <div class="act-date">${dateStr}</div>
+          </div>
+          <div class="act-stats">
+            <div><div class="act-stat-val">${a.distance_km}</div><div class="act-stat-key">km</div></div>
+            <div><div class="act-stat-val">${a.moving_time_str}</div><div class="act-stat-key">tempo</div></div>
+            ${a.average_heartrate ? `<div><div class="act-stat-val">${Math.round(a.average_heartrate)}</div><div class="act-stat-key">bpm</div></div>` : ''}
+            ${a.total_elevation_gain ? `<div><div class="act-stat-val">+${Math.round(a.total_elevation_gain)}m</div><div class="act-stat-key">elev</div></div>` : ''}
+          </div>
+          <span class="pace-chip">${a.pace_str}/km</span>
+        </div>`;
+    });
+
+    document.getElementById('loadMoreBtn').style.display = page < totalPages ? 'block' : 'none';
+
+    // Stats totais na primeira carga
+    if (reset) loadTotals();
+  } catch(e) { console.error(e); }
+}
+
+async function loadTotals() {
+  try {
+    const r = await fetch('/api/stats?period=year');
+    const d = await r.json();
+    document.getElementById('totalRuns').textContent = d.count;
+    document.getElementById('totalKm').textContent   = d.km + ' km';
+    document.getElementById('totalElev').textContent = (d.elevation||0).toLocaleString('pt-BR') + 'm';
+    document.getElementById('totalCal').textContent  = d.calories.toLocaleString('pt-BR');
+  } catch(e) {}
+}
+
+function loadMore() { page++; loadActivities(false); }
+
+document.addEventListener('DOMContentLoaded', () => loadActivities(true));
+</script>
+{% endblock %}
