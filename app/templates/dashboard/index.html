@@ -344,7 +344,11 @@ async function loadActivities(reset=true) {
 
     const iconSvg = `<svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke="var(--brand)"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>`;
     d.activities.forEach(a => {
-      const dt = a.start_date_local ? new Date(a.start_date_local) : null;
+      const dt = a.start_date_local ? (() => {
+          // Strava retorna horário local — já está em horário de Brasília
+          const d = new Date(a.start_date_local);
+          return isNaN(d) ? null : d;
+        })() : null;
       const dateStr = dt ? dt.toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
       list.innerHTML += `
         <div class="act-row" onclick="window.location='/dashboard/activity/${a.id}'">
