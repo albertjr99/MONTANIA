@@ -22,7 +22,7 @@
 <aside class="sidebar" id="sidebar">
   <div class="sidebar-logo">
     <div class="logo-mark">
-      <img src="{{ url_for('static', filename='img/logo.svg') }}" alt="Montania">
+      <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Montania">
     </div>
     <div>
       <div class="logo-wordmark">MONTANIA</div>
@@ -39,14 +39,14 @@
       Dashboard
     </a>
 
-    <a class="nav-item {% if request.endpoint == 'dashboard.activities' %}active{% endif %}"
-       href="{{ url_for('dashboard.home') }}#activities">
+    <a class="nav-item {% if request.endpoint in ('dashboard.activities', 'dashboard.home') %}active{% endif %}"
+       href="{{ url_for('dashboard.activities') }}">
       <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
       Atividades
     </a>
 
     <a class="nav-item {% if request.endpoint == 'dashboard.progress' %}active{% endif %}"
-       href="{{ url_for('dashboard.home') }}#progress">
+       href="{{ url_for('dashboard.progress') }}">
       <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
       Progresso
     </a>
