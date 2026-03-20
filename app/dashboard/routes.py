@@ -52,3 +52,13 @@ def upload_avatar():
         db.session.commit()
         return jsonify({'ok': True, 'url': img_data})
     return jsonify({'ok': False}), 400
+
+@dashboard_bp.route('/activities')
+@login_required
+def activities():
+    return render_template('dashboard/activities.html')
+
+@dashboard_bp.route('/progress')
+@login_required
+def progress():
+    return render_template('dashboard/progress.html')
