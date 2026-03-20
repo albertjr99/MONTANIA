@@ -37,3 +37,18 @@ def activity(activity_id):
 @login_required
 def settings():
     return render_template('dashboard/settings.html')
+
+@dashboard_bp.route('/upload-avatar', methods=['POST'])
+@login_required
+def upload_avatar():
+    from flask import request, jsonify
+    import base64, os
+    data = request.get_json(silent=True) or {}
+    img_data = data.get('image')  # base64 data URL
+    if img_data and img_data.startswith('data:image'):
+        # Salva como data URL direto no banco (simples, sem storage externo)
+        from ..models import db
+        current_user.avatar_url = img_data
+        db.session.commit()
+        return jsonify({'ok': True, 'url': img_data})
+    return jsonify({'ok': False}), 400
