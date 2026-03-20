@@ -73,10 +73,10 @@ def callback():
 
     flash('Strava conectado com sucesso! Sincronizando atividades...', 'success')
 
-    # Sync inicial em background (simples — síncrono por ora)
+    # Sync inicial — sem streams (rápido, evita timeout do Gunicorn)
     try:
         client = StravaClient(current_user)
-        synced = client.sync_all_activities(max_pages=5)  # últimas ~250 corridas
+        synced = client.sync_all_activities_fast(max_pages=5)
         flash(f'{synced} atividade(s) sincronizada(s)!', 'success')
     except Exception as e:
         flash(f'Strava conectado, mas houve um erro na sincronização: {e}', 'warning')
